@@ -17,7 +17,15 @@ def slugify(title: str) -> str:
 
 
 def format_markdown(title: str, url: str, channel: str, duration: str, transcribed_date: str, transcript: str) -> str:
-    pass
+    return (
+        f"# {title}\n\n"
+        f"**Source:** {url}\n"
+        f"**Channel:** {channel}\n"
+        f"**Duration:** {duration}\n"
+        f"**Transcribed:** {transcribed_date}\n\n"
+        f"---\n\n"
+        f"{transcript}"
+    )
 
 
 def get_video_info(url: str) -> dict:
