@@ -121,12 +121,38 @@ def main() -> None:
     _check_ffmpeg()
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    print("YouTube Video Transcriber")
-    url = input("Enter YouTube URL: ").strip()
-    if not url:
-        print("Error: No URL provided.")
-        sys.exit(1)
-    if not process_one(url, script_dir):
+    if len(sys.argv) == 1:
+        print("YouTube Video Transcriber")
+        url = input("Enter YouTube URL: ").strip()
+        if not url:
+            print("Error: No URL provided.")
+            sys.exit(1)
+        if not process_one(url, script_dir):
+            sys.exit(1)
+
+    elif len(sys.argv) == 2:
+        filepath = sys.argv[1]
+        if not os.path.isfile(filepath):
+            print(f"Error: File not found: {filepath}")
+            sys.exit(1)
+        urls = parse_urls_file(filepath)
+        if not urls:
+            print("No URLs found in file.")
+            sys.exit(0)
+        print(f"YouTube Video Transcriber — Batch Mode ({len(urls)} URLs)")
+        succeeded = 0
+        failed = 0
+        for i, url in enumerate(urls, 1):
+            print(f"\n[{i}/{len(urls)}] {url}")
+            if process_one(url, script_dir):
+                succeeded += 1
+            else:
+                print("Skipping.")
+                failed += 1
+        print(f"\nDone: {succeeded} succeeded, {failed} failed.")
+
+    else:
+        print("Usage: python transcribe.py [urls_file.txt]")
         sys.exit(1)
 
 
