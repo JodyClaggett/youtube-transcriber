@@ -1,11 +1,20 @@
 import os
 import re
+import shutil
 import sys
 import tempfile
 from datetime import date
 
 import whisper
 import yt_dlp
+
+
+def _check_ffmpeg() -> None:
+    if shutil.which("ffmpeg") is None:
+        print("Error: ffmpeg is not installed or not on your PATH.")
+        print("Install it and try again. See README.md for instructions.")
+        sys.exit(1)
+
 
 WHISPER_MODEL = "base"
 
@@ -63,7 +72,59 @@ def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL) -> str:
 
 
 def main() -> None:
-    pass
+    _check_ffmpeg()
+
+    print("YouTube Video Transcriber")
+    url = input("Enter YouTube URL: ").strip()
+    if not url:
+        print("Error: No URL provided.")
+        sys.exit(1)
+
+    print("\nFetching video info...", end=" ", flush=True)
+    try:
+        info = get_video_info(url)
+    except Exception as e:
+        print(f"\nError: Could not fetch video info.\n{e}")
+        sys.exit(1)
+    print(f'"{info["title"]}" by {info["channel"]} ({info["duration"]})')
+
+    audio_path = None
+    try:
+        print("Downloading audio...", end=" ", flush=True)
+        audio_path = download_audio(url)
+        print("✓")
+
+        print(f"Transcribing... (using whisper '{WHISPER_MODEL}' model)", end=" ", flush=True)
+        transcript = transcribe_audio(audio_path, WHISPER_MODEL)
+        print("✓")
+    except Exception as e:
+        print(f"\nError: {e}")
+        sys.exit(1)
+    finally:
+        if audio_path and os.path.exists(audio_path):
+            tmp_dir = os.path.dirname(audio_path)
+            os.remove(audio_path)
+            if os.path.isdir(tmp_dir):
+                os.rmdir(tmp_dir)
+
+    today = date.today().isoformat()
+    markdown = format_markdown(
+        title=info["title"],
+        url=url,
+        channel=info["channel"],
+        duration=info["duration"],
+        transcribed_date=today,
+        transcript=transcript,
+    )
+
+    filename = slugify(info["title"]) + ".md"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(script_dir, filename)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(markdown)
+
+    print(f"\nSaved: {filename}")
 
 
 if __name__ == "__main__":
