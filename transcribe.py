@@ -71,6 +71,12 @@ def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL) -> str:
     return result["text"].strip()
 
 
+def parse_urls_file(filepath: str) -> list:
+    with open(filepath, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    return [line.strip() for line in lines if line.strip() and not line.strip().startswith("#")]
+
+
 def process_one(url: str, output_dir: str) -> bool:
     audio_path = None
     try:

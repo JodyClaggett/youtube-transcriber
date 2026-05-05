@@ -7,7 +7,7 @@ import pytest
 sys.modules["whisper"] = MagicMock()
 sys.modules["yt_dlp"] = MagicMock()
 
-from transcribe import slugify, format_markdown, get_video_info, download_audio, transcribe_audio, process_one
+from transcribe import slugify, format_markdown, get_video_info, download_audio, transcribe_audio, process_one, parse_urls_file
 
 
 class TestSlugify:
@@ -223,3 +223,33 @@ class TestProcessOne:
              patch("transcribe.shutil.rmtree") as mock_rmtree:
             process_one("https://youtube.com/watch?v=fake", str(tmp_path))
         mock_rmtree.assert_called_once()
+
+
+class TestParseUrlsFile:
+    def test_returns_urls(self, tmp_path):
+        f = tmp_path / "urls.txt"
+        f.write_text("https://youtube.com/watch?v=abc\nhttps://youtube.com/watch?v=def\n")
+        assert parse_urls_file(str(f)) == [
+            "https://youtube.com/watch?v=abc",
+            "https://youtube.com/watch?v=def",
+        ]
+
+    def test_ignores_blank_lines(self, tmp_path):
+        f = tmp_path / "urls.txt"
+        f.write_text("https://youtube.com/watch?v=abc\n\nhttps://youtube.com/watch?v=def\n")
+        assert len(parse_urls_file(str(f))) == 2
+
+    def test_ignores_comment_lines(self, tmp_path):
+        f = tmp_path / "urls.txt"
+        f.write_text("# my videos\nhttps://youtube.com/watch?v=abc\n")
+        assert parse_urls_file(str(f)) == ["https://youtube.com/watch?v=abc"]
+
+    def test_empty_file_returns_empty_list(self, tmp_path):
+        f = tmp_path / "urls.txt"
+        f.write_text("")
+        assert parse_urls_file(str(f)) == []
+
+    def test_all_comments_returns_empty_list(self, tmp_path):
+        f = tmp_path / "urls.txt"
+        f.write_text("# comment 1\n# comment 2\n")
+        assert parse_urls_file(str(f)) == []
