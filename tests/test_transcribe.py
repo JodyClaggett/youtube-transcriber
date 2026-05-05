@@ -1,12 +1,12 @@
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 sys.modules["whisper"] = MagicMock()
 sys.modules["yt_dlp"] = MagicMock()
 
-from transcribe import slugify, format_markdown
+from transcribe import slugify, format_markdown, get_video_info
 
 
 class TestSlugify:
@@ -68,3 +68,50 @@ class TestFormatMarkdown:
     def test_separator_present(self):
         md = self._make_markdown()
         assert "---" in md
+
+
+class TestGetVideoInfo:
+    def _fake_info(self):
+        return {
+            "title": "How to Build a Rocket",
+            "uploader": "NASA",
+            "duration": 754,  # seconds = 12:34
+        }
+
+    def test_returns_title(self):
+        with patch("transcribe.yt_dlp.YoutubeDL") as MockYDL:
+            instance = MockYDL.return_value.__enter__.return_value
+            instance.extract_info.return_value = self._fake_info()
+            info = get_video_info("https://youtube.com/watch?v=fake")
+        assert info["title"] == "How to Build a Rocket"
+
+    def test_returns_channel(self):
+        with patch("transcribe.yt_dlp.YoutubeDL") as MockYDL:
+            instance = MockYDL.return_value.__enter__.return_value
+            instance.extract_info.return_value = self._fake_info()
+            info = get_video_info("https://youtube.com/watch?v=fake")
+        assert info["channel"] == "NASA"
+
+    def test_formats_duration(self):
+        with patch("transcribe.yt_dlp.YoutubeDL") as MockYDL:
+            instance = MockYDL.return_value.__enter__.return_value
+            instance.extract_info.return_value = self._fake_info()
+            info = get_video_info("https://youtube.com/watch?v=fake")
+        assert info["duration"] == "12:34"
+
+    def test_duration_zero_pads_seconds(self):
+        fake = self._fake_info()
+        fake["duration"] = 65  # 1:05
+        with patch("transcribe.yt_dlp.YoutubeDL") as MockYDL:
+            instance = MockYDL.return_value.__enter__.return_value
+            instance.extract_info.return_value = fake
+            info = get_video_info("https://youtube.com/watch?v=fake")
+        assert info["duration"] == "1:05"
+
+    def test_missing_uploader_defaults_to_unknown(self):
+        fake = {"title": "Test", "duration": 60}
+        with patch("transcribe.yt_dlp.YoutubeDL") as MockYDL:
+            instance = MockYDL.return_value.__enter__.return_value
+            instance.extract_info.return_value = fake
+            info = get_video_info("https://youtube.com/watch?v=fake")
+        assert info["channel"] == "Unknown"

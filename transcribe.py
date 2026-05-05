@@ -29,7 +29,16 @@ def format_markdown(title: str, url: str, channel: str, duration: str, transcrib
 
 
 def get_video_info(url: str) -> dict:
-    pass
+    opts = {"quiet": True, "no_warnings": True}
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+    duration_secs = info.get("duration", 0)
+    minutes, seconds = divmod(duration_secs, 60)
+    return {
+        "title": info["title"],
+        "channel": info.get("uploader", "Unknown"),
+        "duration": f"{minutes}:{seconds:02d}",
+    }
 
 
 def download_audio(url: str) -> str:
