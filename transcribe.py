@@ -101,11 +101,9 @@ def main() -> None:
         print(f"\nError: {e}")
         sys.exit(1)
     finally:
-        if audio_path and os.path.exists(audio_path):
+        if audio_path:
             tmp_dir = os.path.dirname(audio_path)
-            os.remove(audio_path)
-            if os.path.isdir(tmp_dir):
-                os.rmdir(tmp_dir)
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     today = date.today().isoformat()
     markdown = format_markdown(
