@@ -71,39 +71,29 @@ def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL) -> str:
     return result["text"].strip()
 
 
-def main() -> None:
-    _check_ffmpeg()
-
-    print("YouTube Video Transcriber")
-    url = input("Enter YouTube URL: ").strip()
-    if not url:
-        print("Error: No URL provided.")
-        sys.exit(1)
-
-    print("\nFetching video info...", end=" ", flush=True)
+def process_one(url: str, output_dir: str) -> bool:
+    audio_path = None
     try:
+        print("\nFetching video info...", end=" ", flush=True)
         info = get_video_info(url)
+        print(f'"{info["title"]}" by {info["channel"]} ({info["duration"]})')
     except Exception as e:
         print(f"\nError: Could not fetch video info.\n{e}")
-        sys.exit(1)
-    print(f'"{info["title"]}" by {info["channel"]} ({info["duration"]})')
+        return False
 
-    audio_path = None
     try:
         print("Downloading audio...", end=" ", flush=True)
         audio_path = download_audio(url)
         print("✓")
-
         print(f"Transcribing... (using whisper '{WHISPER_MODEL}' model)", end=" ", flush=True)
         transcript = transcribe_audio(audio_path, WHISPER_MODEL)
         print("✓")
     except Exception as e:
         print(f"\nError: {e}")
-        sys.exit(1)
+        return False
     finally:
         if audio_path:
-            tmp_dir = os.path.dirname(audio_path)
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+            shutil.rmtree(os.path.dirname(audio_path), ignore_errors=True)
 
     today = date.today().isoformat()
     markdown = format_markdown(
@@ -114,15 +104,24 @@ def main() -> None:
         transcribed_date=today,
         transcript=transcript,
     )
-
     filename = slugify(info["title"]) + ".md"
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_path = os.path.join(script_dir, filename)
-
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(os.path.join(output_dir, filename), "w", encoding="utf-8") as f:
         f.write(markdown)
-
     print(f"\nSaved: {filename}")
+    return True
+
+
+def main() -> None:
+    _check_ffmpeg()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    print("YouTube Video Transcriber")
+    url = input("Enter YouTube URL: ").strip()
+    if not url:
+        print("Error: No URL provided.")
+        sys.exit(1)
+    if not process_one(url, script_dir):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

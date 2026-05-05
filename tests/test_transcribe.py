@@ -7,7 +7,7 @@ import pytest
 sys.modules["whisper"] = MagicMock()
 sys.modules["yt_dlp"] = MagicMock()
 
-from transcribe import slugify, format_markdown, get_video_info, download_audio, transcribe_audio
+from transcribe import slugify, format_markdown, get_video_info, download_audio, transcribe_audio, process_one
 
 
 class TestSlugify:
@@ -163,3 +163,63 @@ class TestTranscribeAudio:
         with patch("transcribe.whisper.load_model", return_value=mock_model):
             result = transcribe_audio("/fake/audio.mp3")
         assert result == "Transcript here."
+
+
+class TestProcessOne:
+    def test_returns_true_on_success(self, tmp_path):
+        info = {"title": "My Video", "channel": "Test", "duration": "1:00"}
+        with patch("transcribe.get_video_info", return_value=info), \
+             patch("transcribe.download_audio", return_value="/tmp/fake/audio.mp3"), \
+             patch("transcribe.transcribe_audio", return_value="Hello world."), \
+             patch("transcribe.shutil.rmtree"):
+            result = process_one("https://youtube.com/watch?v=fake", str(tmp_path))
+        assert result is True
+
+    def test_writes_markdown_file_on_success(self, tmp_path):
+        info = {"title": "My Video", "channel": "Test", "duration": "1:00"}
+        with patch("transcribe.get_video_info", return_value=info), \
+             patch("transcribe.download_audio", return_value="/tmp/fake/audio.mp3"), \
+             patch("transcribe.transcribe_audio", return_value="Hello world."), \
+             patch("transcribe.shutil.rmtree"):
+            process_one("https://youtube.com/watch?v=fake", str(tmp_path))
+        files = list(tmp_path.glob("*.md"))
+        assert len(files) == 1
+
+    def test_returns_false_when_video_info_fails(self, tmp_path):
+        with patch("transcribe.get_video_info", side_effect=Exception("Not found")):
+            result = process_one("https://youtube.com/watch?v=fake", str(tmp_path))
+        assert result is False
+
+    def test_returns_false_when_download_fails(self, tmp_path):
+        info = {"title": "My Video", "channel": "Test", "duration": "1:00"}
+        with patch("transcribe.get_video_info", return_value=info), \
+             patch("transcribe.download_audio", side_effect=Exception("Download failed")):
+            result = process_one("https://youtube.com/watch?v=fake", str(tmp_path))
+        assert result is False
+
+    def test_returns_false_when_transcribe_fails(self, tmp_path):
+        info = {"title": "My Video", "channel": "Test", "duration": "1:00"}
+        with patch("transcribe.get_video_info", return_value=info), \
+             patch("transcribe.download_audio", return_value="/tmp/fake/audio.mp3"), \
+             patch("transcribe.transcribe_audio", side_effect=Exception("Transcribe failed")), \
+             patch("transcribe.shutil.rmtree"):
+            result = process_one("https://youtube.com/watch?v=fake", str(tmp_path))
+        assert result is False
+
+    def test_cleans_up_temp_dir_on_success(self, tmp_path):
+        info = {"title": "My Video", "channel": "Test", "duration": "1:00"}
+        with patch("transcribe.get_video_info", return_value=info), \
+             patch("transcribe.download_audio", return_value="/tmp/fake/audio.mp3"), \
+             patch("transcribe.transcribe_audio", return_value="text"), \
+             patch("transcribe.shutil.rmtree") as mock_rmtree:
+            process_one("https://youtube.com/watch?v=fake", str(tmp_path))
+        mock_rmtree.assert_called_once()
+
+    def test_cleans_up_temp_dir_on_failure(self, tmp_path):
+        info = {"title": "My Video", "channel": "Test", "duration": "1:00"}
+        with patch("transcribe.get_video_info", return_value=info), \
+             patch("transcribe.download_audio", return_value="/tmp/fake/audio.mp3"), \
+             patch("transcribe.transcribe_audio", side_effect=Exception("fail")), \
+             patch("transcribe.shutil.rmtree") as mock_rmtree:
+            process_one("https://youtube.com/watch?v=fake", str(tmp_path))
+        mock_rmtree.assert_called_once()
