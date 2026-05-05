@@ -11,7 +11,9 @@ WHISPER_MODEL = "base"
 
 
 def slugify(title: str) -> str:
-    pass
+    slug = re.sub(r"[^\w\s-]", "", title)
+    slug = re.sub(r"[\s_]+", "-", slug)
+    return slug.strip("-")
 
 
 def format_markdown(title: str, url: str, channel: str, duration: str, transcribed_date: str, transcript: str) -> str:
