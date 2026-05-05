@@ -7,7 +7,7 @@ import pytest
 sys.modules["whisper"] = MagicMock()
 sys.modules["yt_dlp"] = MagicMock()
 
-from transcribe import slugify, format_markdown, get_video_info, download_audio
+from transcribe import slugify, format_markdown, get_video_info, download_audio, transcribe_audio
 
 
 class TestSlugify:
@@ -140,3 +140,26 @@ class TestDownloadAudio:
             path1 = download_audio("https://youtube.com/watch?v=fake")
             path2 = download_audio("https://youtube.com/watch?v=fake")
         assert os.path.dirname(path1) != os.path.dirname(path2)
+
+
+class TestTranscribeAudio:
+    def test_returns_transcript_text(self):
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = {"text": "  Hello world.  "}
+        with patch("transcribe.whisper.load_model", return_value=mock_model):
+            result = transcribe_audio("/fake/audio.mp3")
+        assert result == "Hello world."
+
+    def test_uses_specified_model_size(self):
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = {"text": "text"}
+        with patch("transcribe.whisper.load_model", return_value=mock_model) as mock_load:
+            transcribe_audio("/fake/audio.mp3", model_size="small")
+        mock_load.assert_called_once_with("small")
+
+    def test_strips_whitespace_from_result(self):
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = {"text": "\n\n  Transcript here.  \n"}
+        with patch("transcribe.whisper.load_model", return_value=mock_model):
+            result = transcribe_audio("/fake/audio.mp3")
+        assert result == "Transcript here."

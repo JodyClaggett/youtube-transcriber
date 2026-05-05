@@ -57,7 +57,9 @@ def download_audio(url: str) -> str:
 
 
 def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL) -> str:
-    pass
+    model = whisper.load_model(model_size)
+    result = model.transcribe(audio_path)
+    return result["text"].strip()
 
 
 def main() -> None:
