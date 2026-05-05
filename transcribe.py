@@ -42,7 +42,18 @@ def get_video_info(url: str) -> dict:
 
 
 def download_audio(url: str) -> str:
-    pass
+    tmp_dir = tempfile.mkdtemp()
+    output_template = os.path.join(tmp_dir, "audio.%(ext)s")
+    opts = {
+        "format": "bestaudio/best",
+        "outtmpl": output_template,
+        "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}],
+        "quiet": True,
+        "no_warnings": True,
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.download([url])
+    return os.path.join(tmp_dir, "audio.mp3")
 
 
 def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL) -> str:

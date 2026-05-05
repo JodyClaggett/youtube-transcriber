@@ -1,3 +1,4 @@
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -6,7 +7,7 @@ import pytest
 sys.modules["whisper"] = MagicMock()
 sys.modules["yt_dlp"] = MagicMock()
 
-from transcribe import slugify, format_markdown, get_video_info
+from transcribe import slugify, format_markdown, get_video_info, download_audio
 
 
 class TestSlugify:
@@ -115,3 +116,27 @@ class TestGetVideoInfo:
             instance.extract_info.return_value = fake
             info = get_video_info("https://youtube.com/watch?v=fake")
         assert info["channel"] == "Unknown"
+
+
+class TestDownloadAudio:
+    def test_returns_path_string(self):
+        with patch("transcribe.yt_dlp.YoutubeDL") as MockYDL:
+            instance = MockYDL.return_value.__enter__.return_value
+            instance.download.return_value = None
+            path = download_audio("https://youtube.com/watch?v=fake")
+        assert isinstance(path, str)
+
+    def test_path_ends_with_mp3(self):
+        with patch("transcribe.yt_dlp.YoutubeDL") as MockYDL:
+            instance = MockYDL.return_value.__enter__.return_value
+            instance.download.return_value = None
+            path = download_audio("https://youtube.com/watch?v=fake")
+        assert path.endswith(".mp3")
+
+    def test_each_call_uses_different_temp_dir(self):
+        with patch("transcribe.yt_dlp.YoutubeDL") as MockYDL:
+            instance = MockYDL.return_value.__enter__.return_value
+            instance.download.return_value = None
+            path1 = download_audio("https://youtube.com/watch?v=fake")
+            path2 = download_audio("https://youtube.com/watch?v=fake")
+        assert os.path.dirname(path1) != os.path.dirname(path2)
