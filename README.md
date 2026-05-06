@@ -21,9 +21,25 @@ Install dependencies:
 
 ## Usage
 
+### Single video
+
     python transcribe.py
 
 You will be prompted for a YouTube URL. The transcript is saved as a `.md` file in the same directory.
+
+### Batch mode
+
+Create a text file with one URL per line (blank lines and lines starting with `#` are ignored):
+
+    # My videos
+    https://www.youtube.com/watch?v=...
+    https://www.youtube.com/watch?v=...
+
+Then run:
+
+    python transcribe.py urls.txt
+
+Each video is processed in sequence. Failed URLs are skipped with an error message and a summary is printed at the end.
 
 ## Notes
 
