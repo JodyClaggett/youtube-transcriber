@@ -164,6 +164,13 @@ class TestTranscribeAudio:
             result = transcribe_audio("/fake/audio.mp3")
         assert result == "Transcript here."
 
+    def test_passes_fp16_false_to_suppress_cpu_warning(self):
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = {"text": "text"}
+        with patch("transcribe.whisper.load_model", return_value=mock_model):
+            transcribe_audio("/fake/audio.mp3")
+        mock_model.transcribe.assert_called_once_with("/fake/audio.mp3", fp16=False)
+
 
 class TestProcessOne:
     def test_returns_true_on_success(self, tmp_path):
